@@ -1,0 +1,10 @@
+# Project exclude paths
+/client/target/
+/domain/target/
+/external/target/
+/interfaces/target/
+/repository/target/
+/server/target/
+/test/target/
+.idea/**
+*.iml
