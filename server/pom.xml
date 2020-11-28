@@ -64,7 +64,7 @@
     </dependencies>
 
     <build>
-        <finalName>dataPortal</finalName>
+        <finalName>almost-s3</finalName>
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
