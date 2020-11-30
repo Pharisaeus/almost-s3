@@ -1,5 +1,7 @@
 package net.forprogrammers.almosts3.test.dsl;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
@@ -10,9 +12,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import pl.codewise.canaveral.mock.http.HttpNoDepsMockProvider;
-import pl.codewise.canaveral.mock.http.Method;
-import pl.codewise.canaveral.mock.http.MockRuleProvider;
 
 import java.util.Date;
 import java.util.UUID;
@@ -32,7 +31,7 @@ public class TokenHelper {
         }
     }
 
-    public String generateUserToken(String username, HttpNoDepsMockProvider authServer) {
+    public String generateUserToken(String username, WireMockServer authServer) {
         try {
             JWSSigner signer = new RSASSASigner(rsaJWK);
             return generateToken(username, signer, authServer);
@@ -41,7 +40,7 @@ public class TokenHelper {
         }
     }
 
-    public String generateInvalidToken(String username, HttpNoDepsMockProvider authServer) {
+    public String generateInvalidToken(String username, WireMockServer authServer) {
         try {
             RSAKey pubkey = new RSAKeyGenerator(2048)
                     .keyID("sso")
@@ -54,7 +53,7 @@ public class TokenHelper {
         }
     }
 
-    private String generateToken(String username, JWSSigner signer, HttpNoDepsMockProvider authServer) throws JOSEException {
+    private String generateToken(String username, JWSSigner signer, WireMockServer authServer) throws JOSEException {
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(username)
                 .jwtID(jwtId)
@@ -70,9 +69,12 @@ public class TokenHelper {
 
         RSAKey rsaPublicJWK = rsaJWK.toPublicJWK();
         String pubkey = rsaPublicJWK.toJSONObject().toString();
-        authServer.createRule()
-                .whenCalledWith(Method.GET, "/pubkey")
-                .thenRespondWith(MockRuleProvider.Body.asJsonFrom("{\"keys\":[" + pubkey + "]}"));
+        authServer.stubFor(WireMock.get(WireMock.urlEqualTo("/pubkey"))
+                .willReturn(WireMock.aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"keys\":[" + pubkey + "]}")
+                )
+        );
         return signedJWT.serialize() + "=";
     }
 

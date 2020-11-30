@@ -1,33 +1,35 @@
 package net.forprogrammers.almosts3.test.dsl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import net.forprogrammers.almosts3.interfaces.FileAccessRepository;
 import net.forprogrammers.almosts3.interfaces.FileLocation;
 import org.powermock.reflect.Whitebox;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import pl.codewise.canaveral.mock.http.HttpNoDepsMockProvider;
-import pl.codewise.canaveral.mock.http.Method;
-import pl.codewise.canaveral.mock.http.Mime;
-import pl.codewise.canaveral.mock.http.MockRuleProvider;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static net.forprogrammers.almosts3.external.FileLocatorClient.FILE_LOCATION;
 import static org.mockito.Mockito.*;
 
 public class TestHelper {
     private final TokenHelper tokenHelper = new TokenHelper();
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final HttpNoDepsMockProvider authTokenService;
-    private final HttpNoDepsMockProvider locatorService;
-    private final HttpNoDepsMockProvider contentProviderService;
+    private final WireMockServer authTokenService;
+    private final WireMockServer locatorService;
+    private final WireMockServer contentProviderService;
     private final FileAccessRepository fileAccessRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public TestHelper(NamedParameterJdbcTemplate jdbcTemplate,
-                      HttpNoDepsMockProvider authTokenService,
-                      HttpNoDepsMockProvider locatorService,
-                      HttpNoDepsMockProvider contentProviderService,
+                      WireMockServer authTokenService,
+                      WireMockServer locatorService,
+                      WireMockServer contentProviderService,
                       FileAccessRepository fileAccessRepository) {
         this.jdbcTemplate = jdbcTemplate;
         this.authTokenService = authTokenService;
@@ -84,13 +86,22 @@ public class TestHelper {
                 );
             }
             String fileId = file.getFileId().toString();
-            locatorService.createRule()
-                    .whenCalledWith(Method.GET, FILE_LOCATION + "/" + fileId)
-                    .thenRespondWith(MockRuleProvider.Body.from(new FileLocation(contentProviderService.getEndpoint() + "/" + fileId), Mime.JSON));
+            String contentBody;
+            try {
+                contentBody = objectMapper.writeValueAsString(new FileLocation(contentProviderService.baseUrl() + "/" + fileId));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            locatorService.stubFor(WireMock.get(WireMock.urlEqualTo(FILE_LOCATION + "/" + fileId))
+                    .willReturn(WireMock.aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json")
+                            .withBody(contentBody)));
             if (file.isDownloadable()) {
-                contentProviderService.createRule()
-                        .whenCalledWith(Method.GET, "/" + fileId)
-                        .thenRespondWith(MockRuleProvider.Body.asTextFrom(file.getContent()));
+                contentProviderService.stubFor(get(urlEqualTo("/" + fileId))
+                        .willReturn(aResponse()
+                                .withStatus(200)
+                                .withBody(file.getContent())));
             }
         }
     }
@@ -109,9 +120,9 @@ public class TestHelper {
 
     public static class Builder {
         private NamedParameterJdbcTemplate jdbcTemplate;
-        private HttpNoDepsMockProvider authTokenService;
-        private HttpNoDepsMockProvider locatorService;
-        private HttpNoDepsMockProvider contentProviderService;
+        private WireMockServer authTokenService;
+        private WireMockServer locatorService;
+        private WireMockServer contentProviderService;
         private FileAccessRepository fileAccessRepository;
 
         public Builder withJdbc(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -119,17 +130,17 @@ public class TestHelper {
             return this;
         }
 
-        public Builder withTokenService(HttpNoDepsMockProvider authTokenServer) {
+        public Builder withTokenService(WireMockServer authTokenServer) {
             this.authTokenService = authTokenServer;
             return this;
         }
 
-        public Builder withLocatorService(HttpNoDepsMockProvider locatorServer) {
+        public Builder withLocatorService(WireMockServer locatorServer) {
             this.locatorService = locatorServer;
             return this;
         }
 
-        public Builder withContentProviderService(HttpNoDepsMockProvider contentProviderService) {
+        public Builder withContentProviderService(WireMockServer contentProviderService) {
             this.contentProviderService = contentProviderService;
             return this;
         }
