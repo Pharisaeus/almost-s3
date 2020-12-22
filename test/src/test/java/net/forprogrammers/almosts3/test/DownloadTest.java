@@ -175,7 +175,7 @@ public class DownloadTest extends BaseIT {
     }
 
     @Test
-    public void shouldReturn503IfCannotCheckFileAccess() {
+    public void shouldReturn503IfDbIsDown() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
