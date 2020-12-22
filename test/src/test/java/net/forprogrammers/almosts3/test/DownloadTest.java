@@ -10,13 +10,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class DownloadTest extends BaseIT {
 
     @Test
-    public void shouldReturnFileIfFileIsAccessibleAnonymously() throws IOException {
+    public void shouldReturnFileIfFileIsAccessibleAnonymously() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
@@ -24,17 +23,20 @@ public class DownloadTest extends BaseIT {
                         .withAvailableForDownload()
                         .build())
                 .setup();
+        TestFile storedFile = testConfiguration.getFile();
 
         // when
-        Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
+        Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(storedFile.getFileId());
 
         // then
-        assertTrue(result.isRight());
-        assertEquals(new String(testConfiguration.getFile().getContent().getBytes()), new String(result.get().getContentStream().readAllBytes()));
+        assertAll(
+                () -> assertTrue(result.isRight()),
+                () -> assertEquals(storedFile.getContent(), extractContent(result))
+        );
     }
 
     @Test
-    public void shouldReturnFileForCurrentUserIfFileIsAccessibleAnonymously() throws IOException {
+    public void shouldReturnFileForCurrentUserIfFileIsAccessibleAnonymously() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
@@ -43,20 +45,23 @@ public class DownloadTest extends BaseIT {
                         .build())
                 .withUser(TestUser.builder().build())
                 .setup();
+        TestFile storedFile = testConfiguration.getFile();
 
         // when
         Either<RestRequestFailure, FancyFile> result = client.getFileAuthenticated(
-                testConfiguration.getFile().getFileId(),
+                storedFile.getFileId(),
                 testHelper.getValidToken(testConfiguration.getUser())
         );
 
         // then
-        assertTrue(result.isRight());
-        assertEquals(new String(testConfiguration.getFile().getContent().getBytes()), new String(result.get().getContentStream().readAllBytes()));
+        assertAll(
+                () -> assertTrue(result.isRight()),
+                () -> assertEquals(storedFile.getContent(), extractContent(result))
+        );
     }
 
     @Test
-    public void shouldReturnFileIfFileIsAccessibleForCurrentUser() throws IOException {
+    public void shouldReturnFileIfFileIsAccessibleForCurrentUser() {
         // given
         TestUser user = TestUser.builder().build();
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
@@ -65,16 +70,19 @@ public class DownloadTest extends BaseIT {
                         .withAvailableForDownload()
                         .build())
                 .setup();
+        TestFile storedFile = testConfiguration.getFile();
 
         // when
         Either<RestRequestFailure, FancyFile> result = client.getFileAuthenticated(
-                testConfiguration.getFile().getFileId(),
+                storedFile.getFileId(),
                 testHelper.getValidToken(user)
         );
 
         // then
-        assertTrue(result.isRight());
-        assertEquals(new String(testConfiguration.getFile().getContent().getBytes()), new String(result.get().getContentStream().readAllBytes()));
+        assertAll(
+                () -> assertTrue(result.isRight()),
+                () -> assertEquals(storedFile.getContent(), extractContent(result))
+        );
     }
 
     @Test
@@ -95,8 +103,10 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertTrue(result.isLeft());
-        assertEquals(401, result.getLeft().getCode());
+        assertAll(
+                () -> assertTrue(result.isLeft()),
+                () -> assertEquals(401, result.getLeft().getCode())
+        );
     }
 
     @Test
@@ -115,8 +125,10 @@ public class DownloadTest extends BaseIT {
         Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
 
         // then
-        assertTrue(result.isLeft());
-        assertEquals(401, result.getLeft().getCode());
+        assertAll(
+                () -> assertTrue(result.isLeft()),
+                () -> assertEquals(401, result.getLeft().getCode())
+        );
     }
 
     @Test
@@ -136,8 +148,10 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertTrue(result.isLeft());
-        assertEquals(403, result.getLeft().getCode());
+        assertAll(
+                () -> assertTrue(result.isLeft()),
+                () -> assertEquals(403, result.getLeft().getCode())
+        );
     }
 
     @Test
@@ -154,8 +168,10 @@ public class DownloadTest extends BaseIT {
         Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
 
         // then
-        assertTrue(result.isLeft());
-        assertEquals(500, result.getLeft().getCode());
+        assertAll(
+                () -> assertTrue(result.isLeft()),
+                () -> assertEquals(500, result.getLeft().getCode())
+        );
     }
 
     @Test
@@ -172,8 +188,14 @@ public class DownloadTest extends BaseIT {
         testHelper.withDbFailure(() -> {
             Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
             // then
-            assertTrue(result.isLeft());
-            assertEquals(503, result.getLeft().getCode());
+            assertAll(
+                    () -> assertTrue(result.isLeft()),
+                    () -> assertEquals(503, result.getLeft().getCode())
+            );
         });
+    }
+
+    private String extractContent(Either<RestRequestFailure, FancyFile> result) throws IOException {
+        return new String(result.get().getContentStream().readAllBytes());
     }
 }
