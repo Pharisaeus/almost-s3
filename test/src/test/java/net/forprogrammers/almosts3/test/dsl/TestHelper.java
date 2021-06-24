@@ -4,8 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import io.vavr.control.Either;
+import net.forprogrammers.almosts3.client.FancyFile;
 import net.forprogrammers.almosts3.interfaces.FileAccessRepository;
 import net.forprogrammers.almosts3.interfaces.FileLocation;
+import net.forprogrammers.almosts3.interfaces.error.RestRequestFailure;
+import net.forprogrammers.almosts3.test.dsl.assertions.FileDownloadAssertions;
 import org.powermock.reflect.Whitebox;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -115,6 +119,10 @@ public class TestHelper {
         Whitebox.setInternalState(fileAccessRepository, NamedParameterJdbcTemplate.class, fakeJdbc);
         testCode.run();
         Whitebox.setInternalState(fileAccessRepository, NamedParameterJdbcTemplate.class, jdbcTemplate);
+    }
+
+    public FileDownloadAssertions assertOnResponse(Either<RestRequestFailure, FancyFile> result) {
+        return new FileDownloadAssertions(result);
     }
 
 

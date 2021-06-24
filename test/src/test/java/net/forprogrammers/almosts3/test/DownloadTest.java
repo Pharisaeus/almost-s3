@@ -8,10 +8,6 @@ import net.forprogrammers.almosts3.test.dsl.TestFile;
 import net.forprogrammers.almosts3.test.dsl.TestUser;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 public class DownloadTest extends BaseIT {
 
     @Test
@@ -29,10 +25,9 @@ public class DownloadTest extends BaseIT {
         Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(storedFile.getFileId());
 
         // then
-        assertAll(
-                () -> assertTrue(result.isRight()),
-                () -> assertEquals(storedFile.getContent(), extractContent(result))
-        );
+        testHelper.assertOnResponse(result)
+                .isOk()
+                .matchesContent(storedFile.getContent());
     }
 
     @Test
@@ -54,10 +49,9 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertAll(
-                () -> assertTrue(result.isRight()),
-                () -> assertEquals(storedFile.getContent(), extractContent(result))
-        );
+        testHelper.assertOnResponse(result)
+                .isOk()
+                .matchesContent(storedFile.getContent());
     }
 
     @Test
@@ -79,14 +73,13 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertAll(
-                () -> assertTrue(result.isRight()),
-                () -> assertEquals(storedFile.getContent(), extractContent(result))
-        );
+        testHelper.assertOnResponse(result)
+                .isOk()
+                .matchesContent(storedFile.getContent());
     }
 
     @Test
-    public void shouldReturn401IfUserHasInvalidToken() {
+    public void shouldReturnUnauthorizedIfUserHasInvalidToken() {
         // given
         TestUser user = TestUser.builder().build();
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
@@ -103,14 +96,13 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertAll(
-                () -> assertTrue(result.isLeft()),
-                () -> assertEquals(401, result.getLeft().getCode())
-        );
+        testHelper.assertOnResponse(result)
+                .isFailed()
+                .isUnauthorized();
     }
 
     @Test
-    public void shouldReturn401IfUserIsNotAuthenticatedAndFileNotAnonymous() {
+    public void shouldReturnUnauthorizedIfUserIsNotAuthenticatedAndFileNotAnonymous() {
         // given
         TestUser user = TestUser.builder().build();
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
@@ -125,14 +117,13 @@ public class DownloadTest extends BaseIT {
         Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
 
         // then
-        assertAll(
-                () -> assertTrue(result.isLeft()),
-                () -> assertEquals(401, result.getLeft().getCode())
-        );
+        testHelper.assertOnResponse(result)
+                .isFailed()
+                .isUnauthorized();
     }
 
     @Test
-    public void shouldReturn403IfUserIsAuthenticatedButHasNoAccessToFile() {
+    public void shouldReturnForbiddenIfUserIsAuthenticatedButHasNoAccessToFile() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
@@ -148,14 +139,13 @@ public class DownloadTest extends BaseIT {
         );
 
         // then
-        assertAll(
-                () -> assertTrue(result.isLeft()),
-                () -> assertEquals(403, result.getLeft().getCode())
-        );
+        testHelper.assertOnResponse(result)
+                .isFailed()
+                .isForbidden();
     }
 
     @Test
-    public void shouldReturn500IfCannotFetchFileContent() {
+    public void shouldReturnInternalErrorIfCannotFetchFileContent() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
@@ -168,14 +158,13 @@ public class DownloadTest extends BaseIT {
         Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
 
         // then
-        assertAll(
-                () -> assertTrue(result.isLeft()),
-                () -> assertEquals(500, result.getLeft().getCode())
-        );
+        testHelper.assertOnResponse(result)
+                .isFailed()
+                .isInternalError();
     }
 
     @Test
-    public void shouldReturn503IfDbIsDown() {
+    public void shouldReturnTemporaryUnavailableIfDbIsDown() {
         // given
         TestConfiguration testConfiguration = testHelper.createNewConfiguration()
                 .withFile(TestFile.builder()
@@ -188,14 +177,9 @@ public class DownloadTest extends BaseIT {
         testHelper.withDbFailure(() -> {
             Either<RestRequestFailure, FancyFile> result = client.getFileAnonymously(testConfiguration.getFile().getFileId());
             // then
-            assertAll(
-                    () -> assertTrue(result.isLeft()),
-                    () -> assertEquals(503, result.getLeft().getCode())
-            );
+            testHelper.assertOnResponse(result)
+                    .isFailed()
+                    .isTemporaryUnavailable();
         });
-    }
-
-    private String extractContent(Either<RestRequestFailure, FancyFile> result) throws IOException {
-        return new String(result.get().getContentStream().readAllBytes());
     }
 }

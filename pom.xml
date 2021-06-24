@@ -27,7 +27,6 @@
     <properties>
         <java.version>11</java.version>
         <spring-version>5.2.0.RELEASE</spring-version>
-        <commons.version>1.2</commons.version>
     </properties>
 
     <dependencyManagement>
@@ -93,21 +92,4 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.8.0</version>
-                    <configuration>
-                        <release>${java.version}</release>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-        </plugins>
-    </build>
 </project>
